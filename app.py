@@ -1,4 +1,4 @@
-import streamlit as st
+mport streamlit as st
 import pandas as pd
 
 # 1. Configuración de la página (Debe ser la primera instrucción de Streamlit)
@@ -11,14 +11,10 @@ st.set_page_config(
 # 2. Función para cargar los datos con Caché
 # El decorador @st.cache_data evita que se recargue el archivo cada vez que interactúas con la app
 @st.cache_data
-def load_data():
-    # IMPORTANTE: Asegúrate de que el nombre del archivo aquí coincida con el que subas a GitHub.
-    # Usamos read_csv porque es más rápido, pero si subes el Excel, cámbialo a pd.read_excel('archivo.xlsx')
-    archivo = '20250617_BaseAgricola20192024.xlsx - BasePagina.csv'
-    
+def load_data(uploaded_file):
     try:
-        # Cargamos el dataframe
-        df = pd.read_csv(archivo)
+        # Cargamos el dataframe leyendo directamente el archivo subido
+        df = pd.read_excel(uploaded_file)
         
         # Limpieza inicial: asegurarnos de que las métricas sean numéricas
         columnas_metricas = ['Área sembrada (ha)', 'Área cosechada (ha)', 'Producción (t)', 'Rendimiento (t/ha)']
@@ -26,22 +22,29 @@ def load_data():
             if col in df.columns:
                 # Convertimos comas a puntos si vienen como texto (opcional, por si acaso)
                 if df[col].dtype == object:
-                    df[col] = df[col].astype(str).str.replace(',', '.')
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-                
-        return df
-    except FileNotFoundError:
-        st.error(f"No se encontró el archivo '{archivo}'. Por favor, verifica que esté en el repositorio.")
-        return pd.DataFrame() # Retorna dataframe vacío si falla
+                df[col] = df[col].astype(str).str.replace(',', '.')
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+    return df
+except Exception as e:
+    st.error(f"Hubo un problema al leer el archivo Excel: {e}")
+    return pd.DataFrame() # Retorna dataframe vacío si falla
 
 # 3. Interfaz de Usuario (UI)
 def main():
     st.title("🌾 Consulta de Desempeño Agrícola (2019 - 2024)")
     st.markdown("Esta aplicación permite visualizar la evolución de la siembra, cosecha y producción agrícola en los distintos departamentos de Colombia.")
     
+    # Widget para que el usuario suba el archivo de Excel
+    archivo_subido = st.file_uploader("Sube aquí tu base de datos (formato .xlsx o .xls)", type=["xlsx", "xls"])
+    
+    if archivo_subido is None:
+        st.info("Por favor, sube un archivo de Excel para comenzar el análisis.")
+        st.stop() # Detiene la ejecución hasta que haya un archivo
+    
     # Cargamos los datos
     with st.spinner('Cargando base de datos...'):
-        df = load_data()
+        df = load_data(archivo_subido)
         
     if df.empty:
         st.stop() # Detiene la ejecución si no hay datos
